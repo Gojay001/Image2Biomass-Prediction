@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Kaggle
+.kaggle/
+*.zip
+
+# IDE
+.vscode/
+.idea/
+
+# Generated
+output/
+experiments/eda/output/
+wandb/
+*.log
