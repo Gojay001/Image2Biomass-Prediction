@@ -2,6 +2,12 @@
 
 [Kaggle 竞赛页](https://www.kaggle.com/competitions/csiro-biomass/overview) | 奖金池 $75,000（以官网为准）
 
+## 竞赛时间与成绩
+
+- **赛程**：**2025-10-29** — **2026-01-29**（以 Kaggle 竞赛页为准）。
+- **排名**：**第 326 名** / 共 **3805** 支参赛队伍（约 **Top 9%**）。
+- **奖牌**：**单人铜牌**（Solo Bronze；以 Kaggle 官方榜单与奖牌规则为准）。
+
 ## 任务
 
 从牧场 **RGB 航拍图** 预测多种 **干物质生物量** 指标（`Dry_Green_g`、`Dry_Dead_g` 等）。训练表为「每张图 × 每个 target」多行；评测为 **全局加权 R²**（见 [docs/competition-spec.md](docs/competition-spec.md)）。
