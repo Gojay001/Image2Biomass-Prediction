@@ -21,9 +21,9 @@
 
 | 版本 | 描述 | Public Score | 状态 |
 |------|------|--------------|------|
-| — | （待填写） | — | — |
+| v1.0-ensemble4 | 四路子预测加权融合（见下「EXP-001」） | **~0.69**（notebook 文件名 LB；以 Kaggle 为准） | 已入库：`notebooks/v1.0-ensemble4-lb-0.69.ipynb` |
 
-**当前最优**：—
+**当前最优**：**v1.0-ensemble4**（`notebooks/v1.0-ensemble4-lb-0.69.ipynb`，Public LB 约 **0.69**）。
 
 ---
 
@@ -52,8 +52,26 @@
 
 ## 实验日志
 
+### EXP-001: v1.0 四路集成（ensemble4）
+
+- **Notebook**：[notebooks/v1.0-ensemble4-lb-0.69.ipynb](notebooks/v1.0-ensemble4-lb-0.69.ipynb)（致谢：Chika Komari、seddik turki、samu2505 等社区基线）。
+- **Public LB**：文件名标注 **~0.69**（以 Kaggle Leaderboard 为准）。
+- **流程概要**（下列 **1–4 为四条子流水线**；**代码执行顺序**为：1 → 3 → 2 → 4 → 融合）：
+  1. **`submission1.csv`（SigLIP + 表格/嵌入）**  
+     `test.csv` → 宽表；**SigLIP** 图像嵌入 + 可选 **语义文本特征**；**`SupervisedEmbeddingEngine`**（Scaler / PCA / PLS / GMM + 语义）；**5 折 CV** 下 **HistGB、Sklearn GB、CatBoost、LGBM** 各训预测，**四模型测试预测算术平均**；**`post_process_biomass`**；**`melt_table`** 生成 `sample_id,target`。训练侧使用 **`csiro_data_split`** 等 Kaggle 附加数据（以赛题 Rules 为准）。
+  2. **`submission3.csv`（CrossPVT / T2T / Mamba + DINO）**  
+     **`run_dino_inference()`**：`vit_*` 结构 **`CrossPVT_T2T_MambaDINO`**，**5 个 fold** 的 `best_wr2.pt` 在 batch 内前向取 **mean**；可选 **TTA**；宽表 melt 后与 `test.csv` **merge** 对齐 `sample_id`。
+  3. **`submission2.csv`（MVP 多 DINO checkpoint）**  
+     **`run_mvp_inference()`**：`csiro-mvp-models` 下 **model1…10** 分两堆（各 5 个），组内 **TTA + 平均**，组间 **`0.95 * pred_A + 0.075 * pred_B`**；**`create_submission_mvp`** 中 **GDM / Total 与分量一致** 后写 CSV。
+  4. **`submission4.csv`（EVA02）**  
+     **`run_eva()`**：单 checkpoint（如 `best_model_fold_4.pth`），左右半图 + **TTA**；**clover/dead** 由 total/gdm/green **差分 + clip/阈值** 规则化；逐图写长表。
+  5. **`submission.csv`（最终提交）**  
+     按 **`sample_id` merge** 上述四文件，**`target = 0.4*t1 + 0.25*t2 + 0.25*t3 + 0.1*t4`**（注释：**siglip / mvp dino / cross dino / eva**）。
+- **依赖**：需在 Kaggle Notebook 中挂载竞赛 **`csiro-biomass`** 及 notebook 内硬编码的 **Models / Datasets / Kernel 输出**（路径以该 ipynb 为准）；**联网与外部数据**以竞赛当前 Rules 为准。
+- **与赛题对齐**：输出均为官方要求的 **`sample_id`, `target`** 长表；本地 **`competition_metric`** 使用的权重数值与 [docs/competition-spec.md](docs/competition-spec.md) 一致，**是否与官方全局 R² 逐行等价**以官网 Evaluation 为准。
+
 ### EXP-000: 项目初始化
 
 - **说明**：按 `Nvidia-Nemotron/` 目录与流程初始化；`data/` 含 `train.csv` / `test.csv` / `sample_submission.csv`。
 - **本地 CSV 快照**：`train.csv` **1785** 行、**357** 张唯一图（每图 5 行 target）；`test.csv` 公开 **5** 行（1 张图 × 5 target）。图像文件需从 Kaggle Data 挂载或下载。
-- **后续**：在 `notebooks/` 建立 v01 baseline 后在此追加记录。
+- **后续**：更高分单模与集成见 **EXP-001** 及后续条目。
