@@ -21,10 +21,11 @@
 
 | 版本 | 描述 | Public Score | 状态 |
 |------|------|--------------|------|
-| v2.0-dinov3 | 单路 DINOv3 Huge+ 基线：左右半图 + fusion neck + 5-fold 推理（见「EXP-002」） | **~0.70**（notebook 文件名 LB；以 Kaggle 为准） | 已入库：`notebooks/v2.0-dinov3-lb-0.70.ipynb` |
+| v3.0-siglip+dinov3 | 双路：SigLIP 嵌入 + 树模型 与 DINOv3 Large 推理融合 + 质量平衡（见「EXP-003」） | **~0.72**（notebook 文件名 LB；以 Kaggle 为准） | 已入库：`notebooks/v3.0-siglip+dinov3-lb-0.72.ipynb` |
+| v2.0-dinov3 | 单路 DINOv3 Huge+ 基线：左右半图 + fusion neck + 5-fold 推理（见「EXP-002」） | **~0.70** | 已入库：`notebooks/v2.0-dinov3-lb-0.70.ipynb` |
 | v1.0-ensemble4 | 四路子预测加权融合（见「EXP-001」） | **~0.69** | 已入库：`notebooks/v1.0-ensemble4-lb-0.69.ipynb` |
 
-**当前最优**：**v2.0-dinov3**（`notebooks/v2.0-dinov3-lb-0.70.ipynb`，Public LB 约 **0.70**）。
+**当前最优**：**v3.0-siglip+dinov3**（`notebooks/v3.0-siglip+dinov3-lb-0.72.ipynb`，Public LB 约 **0.72**）。
 
 ---
 
@@ -52,6 +53,20 @@
 ---
 
 ## 实验日志
+
+### EXP-003: v3.0 SigLIP + DINOv3 双路融合
+
+- **Notebook**：[notebooks/v3.0-siglip+dinov3-lb-0.72.ipynb](notebooks/v3.0-siglip+dinov3-lb-0.72.ipynb)（致谢：Eng Adam Al mohammedi、Baidalin、Adilzhan、CigarCat、Mattia Angeli、Khoa、samu2505 等）。
+- **Public LB**：文件名标注 **~0.72**（以 Kaggle Leaderboard 为准）。
+- **流程概要**（多 cell / 子进程顺序）：
+  1. **`submission_siglip.csv`（Cell 1：SigLIP + 表格 ML）**  
+     读 **`csiro-datasplit/csiro_data_split.csv`** 与 **`test.csv`** 宽表；**SigLIP SO400M** 图像嵌入（大图 **520×520 滑窗 patch**，overlap=16，patch 特征 **mean**）；**`generate_semantic_features`** 文本概念相似度 + ratio 特征；**`SupervisedEmbeddingEngine`**（Scaler / PCA / PLS / GMM + 语义）；**按 `fold` 的 5 折**：**HistGB、GradientBoosting、CatBoost、LGBM** 各预测测试集，**四模型算术平均**；**`Dry_Clover_g` 在折内恒为 0**（不单独拟合）；**`post_process_biomass`**（固定三叶草为 0、由分量推 **GDM** / **Total**）→ **`melt_table`** → **`submission_siglip.csv`**。
+  2. **`submission_dinov2026.csv`（Cell 2–3：`csiro_infer.py`）**  
+     **`vit_large_patch16_dinov3_qkvb`** + **FiLM** 调制左右特征、三 **Softplus** 头（green / clover / dead）；**`MODELS_DIR`**（如 **`modelv3/.../models_retrained`**）下 **多个 `*.pth`** 各推理后 **模型维 mean**；**TTA**（原图 / 水平翻 / 垂直翻）；阈值与小规则后处理 → **`submission_dinov2026.csv`**。
+  3. **`submission72.csv`（Cell 4：`robust_ensemble`）**  
+     读入上述两 CSV，**`Dry_Clover_g` 仅用 DINO 分支**；其余目标 **`target = 0.65 * dino + 0.35 * siglip`**（`W_DINO` / `W_SIGLIP`）；宽表后 **`enforce_mass_balance(..., fixed_clover=True)`**：固定三叶草、令 **GDM = Green + Clover**、**Total = GDM + Dead**，非负 clip → **`submission72.csv`** 作为最终融合提交。
+- **依赖**：**`csiro-biomass`**、**`google-siglip-so400m-patch14-384`**、**`csiro-datasplit`**、**`modelv3`**（或 ipynb 内当前 `CFG` 路径）等；以 notebook 与 Kaggle **Rules** 为准。
+- **说明**：与 **EXP-001** 四路大集成不同，本版为 **两路**（嵌入+树 vs. 端到端 DINO）+ **物理解析重算**，工程与算量相对集中。
 
 ### EXP-002: v2.0 DINOv3 单模基线（Huge+）
 
@@ -85,4 +100,4 @@
 
 - **说明**：按 `Nvidia-Nemotron/` 目录与流程初始化；`data/` 含 `train.csv` / `test.csv` / `sample_submission.csv`。
 - **本地 CSV 快照**：`train.csv` **1785** 行、**357** 张唯一图（每图 5 行 target）；`test.csv` 公开 **5** 行（1 张图 × 5 target）。图像文件需从 Kaggle Data 挂载或下载。
-- **后续**：单模强基线见 **EXP-002**；多路集成见 **EXP-001**。
+- **后续**：双路 SigLIP+DINO 见 **EXP-003**；单模 Huge+ 见 **EXP-002**；四路大集成见 **EXP-001**。
