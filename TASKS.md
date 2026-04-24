@@ -21,9 +21,10 @@
 
 | 版本 | 描述 | Public Score | 状态 |
 |------|------|--------------|------|
-| v1.0-ensemble4 | 四路子预测加权融合（见下「EXP-001」） | **~0.69**（notebook 文件名 LB；以 Kaggle 为准） | 已入库：`notebooks/v1.0-ensemble4-lb-0.69.ipynb` |
+| v2.0-dinov3 | 单路 DINOv3 Huge+ 基线：左右半图 + fusion neck + 5-fold 推理（见「EXP-002」） | **~0.70**（notebook 文件名 LB；以 Kaggle 为准） | 已入库：`notebooks/v2.0-dinov3-lb-0.70.ipynb` |
+| v1.0-ensemble4 | 四路子预测加权融合（见「EXP-001」） | **~0.69** | 已入库：`notebooks/v1.0-ensemble4-lb-0.69.ipynb` |
 
-**当前最优**：**v1.0-ensemble4**（`notebooks/v1.0-ensemble4-lb-0.69.ipynb`，Public LB 约 **0.69**）。
+**当前最优**：**v2.0-dinov3**（`notebooks/v2.0-dinov3-lb-0.70.ipynb`，Public LB 约 **0.70**）。
 
 ---
 
@@ -52,6 +53,16 @@
 
 ## 实验日志
 
+### EXP-002: v2.0 DINOv3 单模基线（Huge+）
+
+- **Notebook**：[notebooks/v2.0-dinov3-lb-0.70.ipynb](notebooks/v2.0-dinov3-lb-0.70.ipynb)（致谢 / 上游：[Khoa 的 Kaggle baseline](https://www.kaggle.com/code/llkh0a/cisro-baseline-train-infer-21-12-dinov3-siglip) 的「已训练推理」版思路）。
+- **Public LB**：文件名标注 **~0.70**（以 Kaggle Leaderboard 为准）。
+- **模型**：`timm` **`vit_huge_plus_patch16_dinov3.lvd1689m`**，输入 **512**；左右半图各自过 ViT（`global_pool=''` 保留 patch token），**序列维拼接** 后经 **`LocalMambaBlock`×2** 做轻量跨半图混合，再 **AdaptiveAvgPool1d** 与 **多回归头**（`Softplus` 保证非负）；**`GDM_g` / `Dry_Total_g`** 由 green、clover、dead **加和约束**得到（与 v1.0 单路 notebook 同构）。
+- **数据预处理**：BGR→RGB；**`clean_image`**（裁底 10%、HSV 抠橙区 **inpaint**）；**Albumentations**（训练增广 / 验证 / TTA）；**ImageNet normalize**。
+- **推理**：默认 **`CREATE_SUBMISSION=True`**，从 **`MODEL_DIR`** 加载各折 **`best_model_fold{k}.pth`**（配置中为 Kaggle Dataset **`baseline-dinov3`**），**多折预测平均**；可选 **TTA**；长表 **merge** `test.csv` 生成提交。
+- **训练**：主训练循环在 notebook 内为**注释块**；完整训练需解冻/冻结策略、**EMA**、**AdamW 分组 lr**、**warmup + 余弦**、**StratifiedGroupKFold** 等与 v1.0 同系列说明一致。
+- **依赖**：竞赛 **`csiro-biomass`**、权重 Dataset（如 **`vit-huge-plus-patch16-dinov3-lvd1689m`**、`baseline-dinov3`）等，路径以 ipynb 内 `CFG` 为准。
+
 ### EXP-001: v1.0 四路集成（ensemble4）
 
 - **Notebook**：[notebooks/v1.0-ensemble4-lb-0.69.ipynb](notebooks/v1.0-ensemble4-lb-0.69.ipynb)（致谢：Chika Komari、seddik turki、samu2505 等社区基线）。
@@ -74,4 +85,4 @@
 
 - **说明**：按 `Nvidia-Nemotron/` 目录与流程初始化；`data/` 含 `train.csv` / `test.csv` / `sample_submission.csv`。
 - **本地 CSV 快照**：`train.csv` **1785** 行、**357** 张唯一图（每图 5 行 target）；`test.csv` 公开 **5** 行（1 张图 × 5 target）。图像文件需从 Kaggle Data 挂载或下载。
-- **后续**：更高分单模与集成见 **EXP-001** 及后续条目。
+- **后续**：单模强基线见 **EXP-002**；多路集成见 **EXP-001**。
